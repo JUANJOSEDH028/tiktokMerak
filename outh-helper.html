@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth Helper - MERAK Publisher</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 30px;
+        }
+        
+        .section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 10px 5px 10px 0;
+        }
+        
+        button:hover {
+            background: #5568d3;
+        }
+        
+        .output {
+            background: white;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 10px 0;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        
+        label {
+            display: block;
+            margin: 15px 0 5px 0;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-left: 4px solid #2196F3;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 TikTok OAuth Helper - MERAK Publisher</h1>
+        
+        <div class="info">
+            <strong>📋 Instructions:</strong> This tool helps you generate authorization URLs and exchange codes for tokens.
+        </div>
+
+        <!-- STEP 1: Generate Authorization URL -->
+        <div class="section">
+            <h2>Step 1: Generate Authorization URL</h2>
+            
+            <label>Client Key:</label>
+            <input type="text" id="clientKey" value="aw3g3ad2o2ssx2b6" placeholder="Your Client Key">
+            
+            <label>Redirect URI:</label>
+            <input type="text" id="redirectUri" value="https://juanjosedh028.github.io/tiktokMerak/callback.html" placeholder="Your Callback URL">
+            
+            <button onclick="generateAuthUrl()">Generate Authorization URL</button>
+            
+            <div id="authUrlOutput" class="output" style="display:none;"></div>
+            <button id="copyAuthBtn" onclick="copyAuthUrl()" style="display:none;">📋 Copy URL</button>
+            <button id="openAuthBtn" onclick="openAuthUrl()" style="display:none;">🔗 Open in New Tab</button>
+        </div>
+
+        <!-- STEP 2: Exchange Code for Tokens -->
+        <div class="section">
+            <h2>Step 2: Exchange Code for Tokens</h2>
+            
+            <label>Authorization Code (from callback page):</label>
+            <input type="text" id="authCode" placeholder="Paste the code from callback page">
+            
+            <label>Client Secret:</label>
+            <input type="text" id="clientSecret" value="NJWeJginYyJXZb9OLnAt5WKzg0GCujAj" placeholder="Your Client Secret">
+            
+            <button onclick="generateCurlCommand()">Generate curl Command</button>
+            
+            <div id="curlOutput" class="output" style="display:none;"></div>
+            <button id="copyCurlBtn" onclick="copyCurl()" style="display:none;">📋 Copy curl Command</button>
+        </div>
+
+        <!-- STEP 3: Results -->
+        <div class="section">
+            <h2>Step 3: Token Result</h2>
+            <p style="color: #666; margin-bottom: 15px;">After running the curl command, paste the response here to extract the refresh token:</p>
+            
+            <label>API Response (JSON):</label>
+            <textarea id="apiResponse" rows="8" placeholder='Paste the API response here, e.g.: {"access_token":"...","refresh_token":"..."}'></textarea>
+            
+            <button onclick="extractRefreshToken()">Extract Refresh Token</button>
+            
+            <div id="tokenOutput" style="display:none; margin-top: 20px;">
+                <label>🔑 Refresh Token (save this in your Google Sheet):</label>
+                <div id="refreshTokenOutput" class="output success"></div>
+                <button onclick="copyRefreshToken()">📋 Copy Refresh Token</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let generatedAuthUrl = '';
+        let generatedCurlCmd = '';
+        let extractedRefreshToken = '';
+
+        function generateAuthUrl() {
+            const clientKey = document.getElementById('clientKey').value;
+            const redirectUri = document.getElementById('redirectUri').value;
+            const state = Math.random().toString(36).substring(7);
+            
+            const params = new URLSearchParams({
+                client_key: clientKey,
+                scope: 'user.info.basic,video.publish,video.upload',
+                response_type: 'code',
+                redirect_uri: redirectUri,
+                state: state
+            });
+            
+            generatedAuthUrl = `https://www.tiktok.com/v2/auth/authorize/?${params.toString()}`;
+            
+            document.getElementById('authUrlOutput').textContent = generatedAuthUrl;
+            document.getElementById('authUrlOutput').style.display = 'block';
+            document.getElementById('copyAuthBtn').style.display = 'inline-block';
+            document.getElementById('openAuthBtn').style.display = 'inline-block';
+        }
+
+        function copyAuthUrl() {
+            navigator.clipboard.writeText(generatedAuthUrl);
+            alert('✅ Authorization URL copied to clipboard!');
+        }
+
+        function openAuthUrl() {
+            window.open(generatedAuthUrl, '_blank');
+        }
+
+        function generateCurlCommand() {
+            const clientKey = document.getElementById('clientKey').value;
+            const clientSecret = document.getElementById('clientSecret').value;
+            const authCode = document.getElementById('authCode').value;
+            const redirectUri = document.getElementById('redirectUri').value;
+            
+            if (!authCode) {
+                alert('❌ Please enter the authorization code first!');
+                return;
+            }
+            
+            generatedCurlCmd = `curl -X POST 'https://open.tiktokapis.com/v2/oauth/token/' \\
+  -H 'Content-Type: application/x-www-form-urlencoded' \\
+  -H 'Cache-Control: no-cache' \\
+  -d 'client_key=${clientKey}' \\
+  -d 'client_secret=${clientSecret}' \\
+  -d 'code=${authCode}' \\
+  -d 'grant_type=authorization_code' \\
+  -d 'redirect_uri=${redirectUri}'`;
+            
+            document.getElementById('curlOutput').textContent = generatedCurlCmd;
+            document.getElementById('curlOutput').style.display = 'block';
+            document.getElementById('copyCurlBtn').style.display = 'inline-block';
+        }
+
+        function copyCurl() {
+            navigator.clipboard.writeText(generatedCurlCmd);
+            alert('✅ curl command copied! Run it in your terminal.');
+        }
+
+        function extractRefreshToken() {
+            const response = document.getElementById('apiResponse').value;
+            
+            try {
+                const data = JSON.parse(response);
+                if (data.refresh_token) {
+                    extractedRefreshToken = data.refresh_token;
+                    document.getElementById('refreshTokenOutput').textContent = extractedRefreshToken;
+                    document.getElementById('tokenOutput').style.display = 'block';
+                } else {
+                    alert('❌ No refresh_token found in the response. Check if the API call was successful.');
+                }
+            } catch (e) {
+                alert('❌ Invalid JSON. Please paste the complete API response.');
+            }
+        }
+
+        function copyRefreshToken() {
+            navigator.clipboard.writeText(extractedRefreshToken);
+            alert('✅ Refresh token copied! Paste it in your Google Sheet.');
+        }
+    </script>
+</body>
+</html>
